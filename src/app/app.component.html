@@ -1,6 +1,13 @@
 <!-- Gestor de Finanças - Angular + Angular Material -->
 <mat-sidenav-container class="sidenav-container">
-  <mat-sidenav #drawer class="sidenav" fixedInViewport="true" mode="side" opened="true">
+  <mat-sidenav 
+    #drawer 
+    class="sidenav" 
+    [fixedInViewport]="isHandset" 
+    [mode]="isHandset ? 'over' : 'side'" 
+    [opened]="!isHandset"
+    [fixedTopGap]="isHandset ? 56 : 0"
+    [fixedBottomGap]="isHandset ? 56 : 0">
     <mat-toolbar class="sidenav-toolbar">
       <mat-icon>account_balance</mat-icon>
       <span>Finanças</span>

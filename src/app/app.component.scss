@@ -86,13 +86,26 @@
 // Responsive design
 @media (max-width: 768px) {
   .sidenav {
-    width: 200px;
+    width: 280px;
+  }
+  
+  .app-toolbar {
+    .menu-button {
+      display: block;
+    }
   }
 }
 
+@media (max-width: 600px) {
+  .sidenav {
+    width: 300px;
+  }
+}
+
+// Para telas muito pequenas
 @media (max-width: 480px) {
   .sidenav {
-    width: 100%;
-    position: fixed;
+    width: 90vw;
+    max-width: 280px;
   }
 }
