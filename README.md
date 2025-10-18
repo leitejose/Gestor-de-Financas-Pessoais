@@ -162,10 +162,14 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 ## 📞 Contato
 
-- **Desenvolvedor**: José
-- **Email**: seu-email@example.com
-- **LinkedIn**: [Seu perfil](https://linkedin.com/in/seu-perfil)
+- **Desenvolvedor**: José Leite
+- **GitHub**: [leitejose](https://github.com/leitejose)
+- **Projeto**: Sistema de Gestão Financeira
 
 ---
 
 ⭐ **Se este projeto te ajudou, não esqueça de dar uma estrela!**
+
+## 🌐 Deploy
+
+Este projeto está configurado para deploy automático na Vercel com Angular 17 e Supabase.
