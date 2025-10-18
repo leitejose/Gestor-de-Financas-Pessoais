@@ -3,11 +3,25 @@
   <mat-toolbar class="toolbar">
     <span class="title">Gestão de Transações</span>
     <div class="spacer"></div>
-    <button mat-raised-button color="primary" (click)="showAddForm()" *ngIf="!showForm">
-      <mat-icon>add</mat-icon>
-      Nova Transação
-    </button>
+    <div class="action-buttons">
+      <button mat-stroked-button color="primary" (click)="downloadTemplate()" class="import-btn">
+        <mat-icon>download</mat-icon>
+        Baixar Modelo
+      </button>
+      <button mat-stroked-button color="accent" (click)="triggerFileInput()" class="import-btn">
+        <mat-icon>upload</mat-icon>
+        Importar Excel
+      </button>
+      <input #fileInput type="file" accept=".xlsx,.xls" (change)="onFileSelected($event)" style="display: none;">
+      <button mat-raised-button color="primary" (click)="showAddForm()" *ngIf="!showForm">
+        <mat-icon>add</mat-icon>
+        Nova Transação
+      </button>
+    </div>
   </mat-toolbar>
+
+  <!-- Progress Bar for Import -->
+  <mat-progress-bar *ngIf="isImporting" mode="indeterminate" color="primary"></mat-progress-bar>
 
   <!-- Form Section -->
   <mat-card *ngIf="showForm" class="form-card">

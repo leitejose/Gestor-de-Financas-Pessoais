@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
@@ -8,6 +8,8 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -19,6 +21,7 @@ import { TransactionService } from '../../services/transaction.service';
 import { CategoryService } from '../../services/category.service';
 import { Transaction, CreateTransaction, TransactionType, Category } from '../../models/finance.models';
 import { Subject, takeUntil } from 'rxjs';
+import * as XLSX from 'xlsx';
 
 @Component({
   selector: 'app-transactions',
@@ -34,6 +37,8 @@ import { Subject, takeUntil } from 'rxjs';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatSnackBarModule,
+    MatProgressBarModule,
 
     MatCardModule,
     MatToolbarModule,
@@ -45,6 +50,8 @@ import { Subject, takeUntil } from 'rxjs';
   styleUrl: './transactions.component.scss'
 })
 export class TransactionsComponent implements OnInit, OnDestroy {
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+  
   transactions: Transaction[] = [];
   filteredTransactions: Transaction[] = [];
   categories: Category[] = [];
@@ -68,14 +75,18 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   filterDateFrom: string = '';
   filterDateTo: string = '';
   
+  // Import
+  isImporting = false;
+  
   TransactionType = TransactionType;
   
   private destroy$ = new Subject<void>();
 
   constructor(
+    private fb: FormBuilder,
     private transactionService: TransactionService,
     private categoryService: CategoryService,
-    private fb: FormBuilder
+    private snackBar: MatSnackBar
   ) {
     this.transactionForm = this.fb.group({
       description: ['', [Validators.required, Validators.minLength(3)]],
@@ -237,5 +248,205 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   getTransactionTypeLabel(type: TransactionType): string {
     return type === TransactionType.Income ? 'Receita' : 'Despesa';
+  }
+
+  // Excel Import Methods
+  triggerFileInput(): void {
+    this.fileInput.nativeElement.click();
+  }
+
+  onFileSelected(event: any): void {
+    const file = event.target.files[0];
+    if (file) {
+      this.importFromExcel(file);
+    }
+  }
+
+  importFromExcel(file: File): void {
+    this.isImporting = true;
+    
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        this.processExcelData(jsonData);
+      } catch (error) {
+        this.snackBar.open('Erro ao ler arquivo Excel', 'Fechar', { duration: 3000 });
+      } finally {
+        this.isImporting = false;
+        // Reset file input
+        this.fileInput.nativeElement.value = '';
+      }
+    };
+    
+    reader.readAsArrayBuffer(file);
+  }
+
+  processExcelData(data: any[]): void {
+    if (data.length < 2) {
+      this.snackBar.open('Arquivo deve conter pelo menos um cabeçalho e uma linha de dados', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const headers = data[0];
+    const expectedHeaders = ['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria'];
+    
+    // Verificar se os cabeçalhos estão corretos
+    const hasValidHeaders = expectedHeaders.every(header => 
+      headers.some((h: string) => h && h.toLowerCase().includes(header.toLowerCase()))
+    );
+
+    if (!hasValidHeaders) {
+      this.snackBar.open(`Cabeçalhos inválidos. Esperado: ${expectedHeaders.join(', ')}`, 'Fechar', { duration: 5000 });
+      return;
+    }
+
+    const transactions: CreateTransaction[] = [];
+    const errors: string[] = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row || row.length === 0) continue;
+
+      try {
+        const transaction = this.parseRowToTransaction(row, headers);
+        if (transaction) {
+          transactions.push(transaction);
+        }
+      } catch (error) {
+        errors.push(`Linha ${i + 1}: ${error}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      this.snackBar.open(`${errors.length} erros encontrados. Verificar formato dos dados.`, 'Fechar', { duration: 5000 });
+    }
+
+    if (transactions.length > 0) {
+      this.importTransactions(transactions);
+    }
+  }
+
+  parseRowToTransaction(row: any[], headers: string[]): CreateTransaction | null {
+    const getColumnIndex = (columnName: string) => {
+      return headers.findIndex(h => h && h.toLowerCase().includes(columnName.toLowerCase()));
+    };
+
+    const dateIndex = getColumnIndex('data');
+    const descIndex = getColumnIndex('descrição');
+    const valueIndex = getColumnIndex('valor');
+    const typeIndex = getColumnIndex('tipo');
+    const categoryIndex = getColumnIndex('categoria');
+
+    if (dateIndex === -1 || descIndex === -1 || valueIndex === -1 || typeIndex === -1) {
+      return null;
+    }
+
+    // Parse date
+    let date = '';
+    if (typeof row[dateIndex] === 'number') {
+      // Excel date serial number
+      const excelDate = new Date((row[dateIndex] - 25569) * 86400 * 1000);
+      date = excelDate.toISOString().split('T')[0];
+    } else if (typeof row[dateIndex] === 'string') {
+      const parsedDate = new Date(row[dateIndex]);
+      date = parsedDate.toISOString().split('T')[0];
+    }
+
+    // Parse type
+    const typeStr = row[typeIndex]?.toString().toLowerCase();
+    let type: TransactionType;
+    if (typeStr.includes('receita') || typeStr.includes('entrada') || typeStr.includes('income')) {
+      type = TransactionType.Income;
+    } else {
+      type = TransactionType.Expense;
+    }
+
+    // Find category
+    const categoryName = row[categoryIndex]?.toString();
+    let categoryId = '';
+    if (categoryName) {
+      const category = this.categories.find(c => 
+        c.name.toLowerCase() === categoryName.toLowerCase()
+      );
+      if (category) {
+        categoryId = category.id;
+      } else {
+        // Use first category of the same type as fallback
+        const categoryType = type === TransactionType.Income ? 'income' : 'expense';
+        const fallbackCategory = this.categories.find(c => c.type.toString() === categoryType);
+        if (fallbackCategory) {
+          categoryId = fallbackCategory.id;
+        }
+      }
+    }
+
+    return {
+      description: row[descIndex]?.toString() || '',
+      amount: Math.abs(Number(row[valueIndex]) || 0),
+      date: date,
+      type: type,
+      categoryId: categoryId
+    };
+  }
+
+  async importTransactions(transactions: CreateTransaction[]): Promise<void> {
+    let imported = 0;
+    let failed = 0;
+
+    for (const transaction of transactions) {
+      try {
+        await this.transactionService.createTransaction(transaction).toPromise();
+        imported++;
+      } catch (error) {
+        failed++;
+      }
+    }
+
+    this.snackBar.open(
+      `Importação concluída! ${imported} transações importadas, ${failed} falharam.`,
+      'Fechar',
+      { duration: 5000 }
+    );
+
+    if (imported > 0) {
+      this.loadTransactions();
+    }
+  }
+
+  downloadTemplate(): void {
+    const template = [
+      ['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria'],
+      ['2024-01-15', 'Compras no supermercado', 150.50, 'Despesa', 'Alimentação'],
+      ['2024-01-16', 'Salário mensal', 3000.00, 'Receita', 'Salário'],
+      ['2024-01-17', 'Conta de luz', 120.00, 'Despesa', 'Moradia'],
+      ['2024-01-18', 'Uber para o trabalho', 25.00, 'Despesa', 'Transporte'],
+      ['2024-01-19', 'Freelance website', 500.00, 'Receita', 'Freelances'],
+      ['2024-01-20', 'Cinema com a família', 60.00, 'Despesa', 'Lazer']
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(template);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Transações');
+    
+    // Style the header
+    const range = XLSX.utils.decode_range(ws['!ref'] || '');
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+      if (!ws[cellAddress]) continue;
+      ws[cellAddress].s = {
+        font: { bold: true },
+        fill: { fgColor: { rgb: "667eea" } }
+      };
+    }
+    
+    XLSX.writeFile(wb, 'modelo_transacoes.xlsx');
+    
+    this.snackBar.open('Modelo baixado com sucesso!', 'Fechar', { duration: 3000 });
   }
 }

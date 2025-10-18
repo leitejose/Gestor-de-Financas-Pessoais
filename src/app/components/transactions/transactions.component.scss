@@ -18,6 +18,32 @@
   .spacer {
     flex: 1 1 auto;
   }
+  
+  .action-buttons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    
+    .import-btn {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: white;
+      border-color: rgba(255, 255, 255, 0.3);
+      
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+    
+    @media (max-width: 768px) {
+      flex-wrap: wrap;
+      gap: 8px;
+      
+      button {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+      }
+    }
+  }
 }
 
 .form-card {
