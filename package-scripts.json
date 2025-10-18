@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "dev": "webpack serve --mode development --open",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "serve:ssr:finance-manager-simple": "node dist/finance-manager-simple/server/server.mjs"
+  }
+}

@@ -1,0 +1,357 @@
+<div class="reports-container">
+  <!-- Header -->
+  <mat-toolbar class="reports-toolbar">
+    <span class="title">📊 Relatórios e Gráficos</span>
+    <div class="spacer"></div>
+
+    <!-- Seletor de Período -->
+    <mat-form-field appearance="outline" class="period-selector">
+      <mat-label>Período</mat-label>
+      <mat-select [(value)]="selectedPeriod" (selectionChange)="onPeriodChange()">
+        <mat-option value="current-month">Mês Atual</mat-option>
+        <mat-option value="last-3-months">Últimos 3 Meses</mat-option>
+        <mat-option value="last-6-months">Últimos 6 Meses</mat-option>
+        <mat-option value="current-year">Ano Atual</mat-option>
+        <mat-option value="all-time">Todo o Período</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </mat-toolbar>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-container">
+    <mat-card class="loading-card">
+      <mat-card-content>
+        <div class="loading-content">
+          <mat-icon class="loading-icon">hourglass_empty</mat-icon>
+          <p>Carregando relatórios...</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Resumo Financeiro -->
+  <div *ngIf="!loading" class="summary-cards">
+    <mat-card class="summary-card income">
+      <mat-card-content>
+        <div class="summary-content">
+          <mat-icon>trending_up</mat-icon>
+          <div class="summary-info">
+            <h3>Total de Receitas</h3>
+            <p class="amount">{{ formatCurrency(summary.totalIncome) }}</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card expense">
+      <mat-card-content>
+        <div class="summary-content">
+          <mat-icon>trending_down</mat-icon>
+          <div class="summary-info">
+            <h3>Total de Despesas</h3>
+            <p class="amount">{{ formatCurrency(summary.totalExpenses) }}</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card balance" [class.negative]="summary.balance < 0">
+      <mat-card-content>
+        <div class="summary-content">
+          <mat-icon>account_balance</mat-icon>
+          <div class="summary-info">
+            <h3>Saldo</h3>
+            <p class="amount">{{ formatCurrency(summary.balance) }}</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card transactions">
+      <mat-card-content>
+        <div class="summary-content">
+          <mat-icon>receipt</mat-icon>
+          <div class="summary-info">
+            <h3>Transações</h3>
+            <p class="count">{{ summary.transactionCount }}</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Gráficos -->
+  <div *ngIf="!loading" class="charts-container">
+    <!-- Primeira linha de gráficos -->
+    <div class="charts-row">
+      <!-- Receitas vs Despesas -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>donut_large</mat-icon>
+            Receitas vs Despesas
+          </mat-card-title>
+          <div class="spacer"></div>
+          <button mat-icon-button (click)="exportChart('income-expense')" matTooltip="Exportar">
+            <mat-icon>download</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container">
+            <canvas baseChart
+              [data]="incomeVsExpenseData"
+              [options]="incomeVsExpenseOptions"
+              [type]="incomeVsExpenseType">
+            </canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Despesas por Categoria -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>pie_chart</mat-icon>
+            Despesas por Categoria
+          </mat-card-title>
+          <div class="spacer"></div>
+          <button mat-icon-button (click)="exportChart('category-expenses')" matTooltip="Exportar">
+            <mat-icon>download</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container">
+            <canvas baseChart
+              [data]="categoryExpensesData"
+              [options]="categoryExpensesOptions"
+              [type]="categoryExpensesType">
+            </canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Segunda linha de gráficos -->
+    <div class="charts-row">
+      <!-- Tendência Mensal -->
+      <mat-card class="chart-card full-width">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>timeline</mat-icon>
+            Tendência Mensal (Últimos 6 Meses)
+          </mat-card-title>
+          <div class="spacer"></div>
+          <button mat-icon-button (click)="exportChart('monthly-trend')" matTooltip="Exportar">
+            <mat-icon>download</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container large">
+            <canvas baseChart
+              [data]="monthlyTrendData"
+              [options]="monthlyTrendOptions"
+              [type]="monthlyTrendType">
+            </canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Terceira linha de gráficos -->
+    <div class="charts-row">
+      <!-- Comparação por Categoria -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>bar_chart</mat-icon>
+            Comparação por Categoria
+          </mat-card-title>
+          <div class="spacer"></div>
+          <button mat-icon-button (click)="exportChart('category-comparison')" matTooltip="Exportar">
+            <mat-icon>download</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container">
+            <canvas baseChart
+              [data]="categoryComparisonData"
+              [options]="categoryComparisonOptions"
+              [type]="categoryComparisonType">
+            </canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Distribuição Semanal -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>radar</mat-icon>
+            Distribuição Semanal
+          </mat-card-title>
+          <div class="spacer"></div>
+          <button mat-icon-button (click)="exportChart('weekly-distribution')" matTooltip="Exportar">
+            <mat-icon>download</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container">
+            <canvas baseChart
+              [data]="weeklyDistributionData"
+              [options]="weeklyDistributionOptions"
+              [type]="weeklyDistributionType">
+            </canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Quarta linha de gráficos -->
+    <div class="charts-row">
+      <!-- Crescimento Anual -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>trending_up</mat-icon>
+            Crescimento Anual
+          </mat-card-title>
+          <div class="spacer"></div>
+          <button mat-icon-button (click)="exportChart('yearly-growth')" matTooltip="Exportar">
+            <mat-icon>download</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container">
+            <canvas baseChart
+              [data]="yearlyGrowthData"
+              [options]="yearlyGrowthOptions"
+              [type]="yearlyGrowthType">
+            </canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Média Diária -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>calendar_today</mat-icon>
+            Média por Dia da Semana
+          </mat-card-title>
+          <div class="spacer"></div>
+          <button mat-icon-button (click)="exportChart('daily-average')" matTooltip="Exportar">
+            <mat-icon>download</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container">
+            <canvas baseChart
+              [data]="dailyAverageData"
+              [options]="dailyAverageOptions"
+              [type]="dailyAverageType">
+            </canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Quinta linha - Gráfico de área empilhada -->
+    <div class="charts-row">
+      <mat-card class="chart-card full-width">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>area_chart</mat-icon>
+            Evolução Acumulada (Últimos 12 Meses)
+          </mat-card-title>
+          <div class="spacer"></div>
+          <button mat-icon-button (click)="exportChart('cumulative-evolution')" matTooltip="Exportar">
+            <mat-icon>download</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container large">
+            <canvas baseChart
+              [data]="cumulativeEvolutionData"
+              [options]="cumulativeEvolutionOptions"
+              [type]="cumulativeEvolutionType">
+            </canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Insights e Análises -->
+    <div class="insights-section">
+      <mat-card class="insights-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>lightbulb</mat-icon>
+            Insights Financeiros
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="insights-grid">
+            <div class="insight-item" *ngIf="summary.balance > 0">
+              <mat-icon class="positive">thumb_up</mat-icon>
+              <div class="insight-text">
+                <h4>Situação Positiva</h4>
+                <p>Suas receitas superam as despesas em {{ formatCurrency(summary.balance) }}.</p>
+              </div>
+            </div>
+
+            <div class="insight-item" *ngIf="summary.balance < 0">
+              <mat-icon class="negative">warning</mat-icon>
+              <div class="insight-text">
+                <h4>Atenção Necessária</h4>
+                <p>Suas despesas superam as receitas em {{ formatCurrency(Math.abs(summary.balance)) }}.</p>
+              </div>
+            </div>
+
+            <div class="insight-item" *ngIf="summary.totalExpenses > 0">
+              <mat-icon class="info">info</mat-icon>
+              <div class="insight-text">
+                <h4>Análise de Gastos</h4>
+                <p>Taxa de poupança: {{ ((summary.totalIncome - summary.totalExpenses) / summary.totalIncome * 100).toFixed(1) }}%</p>
+              </div>
+            </div>
+
+            <div class="insight-item">
+              <mat-icon class="info">analytics</mat-icon>
+              <div class="insight-text">
+                <h4>Média por Transação</h4>
+                <p>{{ formatCurrency(summary.totalExpenses / summary.transactionCount || 0) }} por transação</p>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Ações Rápidas -->
+  <div *ngIf="!loading" class="quick-actions">
+    <mat-card class="actions-card">
+      <mat-card-content>
+        <h3>Ações Rápidas</h3>
+        <div class="actions-buttons">
+          <button mat-raised-button color="primary" routerLink="/transactions">
+            <mat-icon>add</mat-icon>
+            Nova Transação
+          </button>
+          <button mat-raised-button>
+            <mat-icon>file_download</mat-icon>
+            Exportar Relatório
+          </button>
+          <button mat-raised-button>
+            <mat-icon>email</mat-icon>
+            Enviar por Email
+          </button>
+          <button mat-raised-button routerLink="/dashboard">
+            <mat-icon>dashboard</mat-icon>
+            Voltar ao Dashboard
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

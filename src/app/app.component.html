@@ -1,0 +1,48 @@
+<!-- Gestor de Finanças - Angular + Angular Material -->
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav #drawer class="sidenav" fixedInViewport="true" mode="side" opened="true">
+    <mat-toolbar class="sidenav-toolbar">
+      <mat-icon>account_balance</mat-icon>
+      <span>Finanças</span>
+    </mat-toolbar>
+    
+    <mat-nav-list>
+      <mat-list-item (click)="navigateTo('dashboard')" [class.active]="isActive('dashboard')">
+        <mat-icon matListItemIcon>dashboard</mat-icon>
+        <span matListItemTitle>Dashboard</span>
+      </mat-list-item>
+      
+      <mat-list-item (click)="navigateTo('transactions')" [class.active]="isActive('transactions')">
+        <mat-icon matListItemIcon>receipt_long</mat-icon>
+        <span matListItemTitle>Transações</span>
+      </mat-list-item>
+      
+      <mat-list-item (click)="navigateTo('categories')" [class.active]="isActive('categories')">
+        <mat-icon matListItemIcon>category</mat-icon>
+        <span matListItemTitle>Categorias</span>
+      </mat-list-item>
+      
+      <mat-list-item (click)="navigateTo('reports')" [class.active]="isActive('reports')">
+        <mat-icon matListItemIcon>assessment</mat-icon>
+        <span matListItemTitle>Relatórios</span>
+      </mat-list-item>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="main-container">
+    <mat-toolbar color="primary" class="app-toolbar">
+      <button mat-icon-button (click)="drawer.toggle()" class="menu-button">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span>{{ title }}</span>
+      <span class="spacer"></span>
+      <button mat-icon-button>
+        <mat-icon>settings</mat-icon>
+      </button>
+    </mat-toolbar>
+
+    <main class="main-content">
+      <router-outlet></router-outlet>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
